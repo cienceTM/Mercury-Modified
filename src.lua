@@ -91,7 +91,7 @@ local Library = {
 	WelcomeText = nil,
 	DisplayName = nil,
 	DragSpeed = 0.06,
-	LockDragging = false,
+	LockDragging = true,
 	ToggleKey = Enum.KeyCode.Home,
 	UrlLabel = nil,
 	Url = nil
@@ -467,8 +467,8 @@ function SaveSystem:Delete(SettingsName, ProfileName)
 end
 
 local settings = {
-    Theme = "Dark",
-    Keybind = Enum.KeyCode.Delete
+    Theme = "Aqua",
+    Keybind = Enum.KeyCode.RightShift
 }
 
 local function saveSettings()
@@ -480,8 +480,8 @@ function Library:create(options)
 
 	if readfile and writefile and isfile then
         settings = SaveSystem:Import("MercuryUI", "Config", {
-            Theme = "Dark",
-            Keybind = Enum.KeyCode.Delete
+            Theme = "Aqua",
+            Keybind = Enum.KeyCode.RightShift
         })
 
 
@@ -968,7 +968,7 @@ function Library:create(options)
 		Name = "UI Drag Speed",
 		Description = "How smooth the dragging looks.",
 		Max = 20,
-		Default = 14,
+		Default = 0,
 		Callback = function(value)
 			Library.DragSpeed = (20 - value)/100
 		end,
