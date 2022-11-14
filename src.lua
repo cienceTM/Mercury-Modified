@@ -91,7 +91,7 @@ local Library = {
 	WelcomeText = nil,
 	DisplayName = nil,
 	DragSpeed = 0.06,
-	LockDragging = true,
+	LockDragging = false,
 	ToggleKey = Enum.KeyCode.Home,
 	UrlLabel = nil,
 	Url = nil
@@ -413,90 +413,29 @@ function Library:set_status(txt)
 	self.statusText.Text = txt
 end
 
-local SaveSystem = {}
-
-local function tableIndex(table)
-    local length = 0
-    for i, v in pairs(table) do
-        length = length + 1
-    end
-    return length
-end
-
-local function EncodeJson(x)
-    return game:GetService("HttpService"):JSONEncode(x)
-end
-
-local function DecodeJson(x)
-    return game:GetService("HttpService"):JSONDecode(x)
-end
-
-local function GlobalImport(SettingsName, ProfileName, DefaultSettings)
-    local Settings
-    local FileName = SettingsName .. "_" .. ProfileName .. ".json" -- must include a .json, change the 'ScriptNameSettings' to what you want
-    if writefile and readfile then
-        local ExistingFile = pcall(readfile, FileName)
-        if not ExistingFile then
-            writefile(FileName, EncodeJson(DefaultSettings))
-            Settings = DefaultSettings
-        else
-            Settings = DecodeJson(readfile(FileName))
-        end
-    end
-    return Settings
-end
-
-function SaveSystem:Import(SettingsName, ProfileName, DefaultSettings)
-    local Settings
-    Settings = GlobalImport(SettingsName, ProfileName, DefaultSettings)
-    if (tableIndex(Settings) == 0) then
-        return DefaultSettings
-    end
-    return Settings
-end
-local function GlobalEdit(SettingsName, ProfileName, Settings)
-    return writefile(SettingsName .. "_" .. ProfileName .. ".json", EncodeJson(Settings))
-end
-
-function SaveSystem:Edit(SettingsName, ProfileName, Settings)
-    return GlobalEdit(SettingsName, ProfileName, Settings)
-end
-
-function SaveSystem:Delete(SettingsName, ProfileName)
-    return delfile(SettingsName .. "_" .. ProfileName .. ".json")
-end
-
-local settings = {
-    Theme = "Aqua",
-    Keybind = Enum.KeyCode.R
-}
-
-local function saveSettings()
-    return SaveSystem:Edit("MercuryUI", "Config", settings)
-end
-
-
 function Library:create(options)
 
+	local settings = {
+		Theme = "Dark"
+	}
+
 	if readfile and writefile and isfile then
-        settings = SaveSystem:Import("MercuryUI", "Config", {
-            Theme = "Aqua",
-            Keybind = Enum.KeyCode.R
-        })
-
-
+		if not isfile("MercurySettings.json") then
+			writefile("MercurySettings.json", HTTPService:JSONEncode(settings))
+		end
+		settings = HTTPService:JSONDecode(readfile("MercurySettings.json"))
 		Library.CurrentTheme = Library.Themes[settings.Theme]
 		updateSettings = function(property, value)
 			settings[property] = value
-			saveSettings()
+			writefile("MercurySettings.json", HTTPService:JSONEncode(settings))
 		end
 	end
 
 	options = self:set_defaults({
-		Name = "Vaser",
+		Name = "Mercury",
 		Size = UDim2.fromOffset(600, 400),
 		Theme = self.Themes[settings.Theme],
-		Link = "Vase"
+		Link = "https://github.com/deeeity/mercury-lib"
 	}, options)
 
 	if getgenv and getgenv().MercuryUI then
@@ -943,13 +882,11 @@ function Library:create(options)
 
 	settingsTab:_theme_selector()
 
-	local hideKeyBind = settingsTab:keybind{
+	settingsTab:keybind{
 		Name = "Toggle Key",
 		Description = "Key to show/hide the UI.",
-		Keybind = settings.Keybind,
+		Keybind = Enum.KeyCode.Delete,
 		Callback = function()
-            pcall(function() updateSettings("Keybind", hideKeyBind:Get()) end)
-
 			self.Toggled = not self.Toggled
 			Library:show(self.Toggled)
 		end,
@@ -968,7 +905,7 @@ function Library:create(options)
 		Name = "UI Drag Speed",
 		Description = "How smooth the dragging looks.",
 		Max = 20,
-		Default = 0,
+		Default = 14,
 		Callback = function(value)
 			Library.DragSpeed = (20 - value)/100
 		end,
@@ -1354,8 +1291,6 @@ function Library:toggle(options)
 		Callback = function(state) end
 	}, options)
 
-	if options.StartingState then options.Callback(true) end
-
 	local toggleContainer = self.container:object("TextButton", {
 		Theme = {BackgroundColor3 = "Secondary"},
 		Size = UDim2.new(1, -20, 0, 52)
@@ -1463,8 +1398,10 @@ function Library:toggle(options)
 		else
 			onIcon:crossfade(offIcon, 0.1)
 		end
-		options.Callback(toggled)
+		task.spawn(function() options.Callback(toggled) end)
 	end
+	
+	if options.StartingState then methods:SetState(true) end
 
 	return methods
 end
@@ -3110,23 +3047,21 @@ function Library:keybind(options)
 			end
 		end)
 
-		UserInputService.InputBegan:Connect(function(key)
-            if not UserInputService:GetFocusedTextBox() then 
-                if listening then
-                    if key.UserInputType == Enum.UserInputType.Keyboard then
-                        if key.KeyCode ~= Enum.KeyCode.Escape then
-                            options.Keybind = key.KeyCode
-                        end
-                        keybindDisplay.Text = (options.Keybind and tostring(options.Keybind.Name):upper()) or "?"
-                        keybindDisplay:tween{Size = UDim2.fromOffset(keybindDisplay.TextBounds.X + 20, 20), Length = 0.05}
-                        listening = false
-                    end
-                else
-                    if key.KeyCode == options.Keybind then
-                        options.Callback()
-                    end
-                end
-            end
+		UserInputService.InputBegan:Connect(function(key, gameProcessed)
+			if listening and not UserInputService:GetFocusedTextBox() then
+				if key.UserInputType == Enum.UserInputType.Keyboard then
+					if key.KeyCode ~= Enum.KeyCode.Escape then
+						options.Keybind = key.KeyCode
+					end
+					keybindDisplay.Text = (options.Keybind and tostring(options.Keybind.Name):upper()) or "?"
+					keybindDisplay:tween{Size = UDim2.fromOffset(keybindDisplay.TextBounds.X + 20, 20), Length = 0.05}
+					listening = false
+				end
+			else
+				if key.KeyCode == options.Keybind then
+					options.Callback()
+				end
+			end
 		end)
 
 		keybindContainer.MouseButton1Click:connect(function()
@@ -3142,10 +3077,6 @@ function Library:keybind(options)
 		keybindDisplay.Text = (options.Keybind and tostring(options.Keybind.Name):upper()) or "?"
 		keybindDisplay:tween{Size = UDim2.fromOffset(keybindDisplay.TextBounds.X + 20, 20), Length = 0.05}
 	end
-
-    function methods:Get()
-        return options.Keybind
-    end
 
 	return methods
 end
