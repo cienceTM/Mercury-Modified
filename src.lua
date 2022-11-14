@@ -468,7 +468,7 @@ end
 
 local settings = {
     Theme = "Aqua",
-    Keybind = Enum.KeyCode.RIGHTSHIFT
+    Keybind = Enum.KeyCode.R
 }
 
 local function saveSettings()
@@ -481,7 +481,7 @@ function Library:create(options)
 	if readfile and writefile and isfile then
         settings = SaveSystem:Import("MercuryUI", "Config", {
             Theme = "Aqua",
-            Keybind = Enum.KeyCode.RIGHTSHIFT
+            Keybind = Enum.KeyCode.R
         })
 
 
